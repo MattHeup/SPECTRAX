@@ -12,7 +12,7 @@ from .midpoint_solver import ImplicitMidpoint
 __all__ = ["load_parameters", "initialize_simulation_parameters"]
 
 @partial(jit, static_argnames=['Nx', 'Ny', 'Nz','Nn', 'Nm', 'Np', 'Ns', 'timesteps'])
-def initialize_simulation_parameters(user_parameters={}, Nx=33, Ny=1, Nz=1, Nn=50, Nm=1, Np=1, Ns=2, timesteps=500, dt=0.01):
+def initialize_simulation_parameters(user_parameters={}, Nx=33, Ny=1, Nz=1, Nn=50, Nm=1, Np=1, Ns=2, timesteps=500, dt=0.01, alpha_tol=0.1, u_tol=0.1):
     """
     Assemble the parameter dictionary used to run a Hermite-Fourier Vlasov-Maxwell
     simulation, starting from library defaults and overriding them with user input.
@@ -151,6 +151,7 @@ def initialize_simulation_parameters(user_parameters={}, Nx=33, Ny=1, Nz=1, Nn=5
         "sqrt_n_plus": sqrt_n_plus, "sqrt_n_minus": sqrt_n_minus,
         "sqrt_m_plus": sqrt_m_plus, "sqrt_m_minus": sqrt_m_minus,
         "sqrt_p_plus": sqrt_p_plus, "sqrt_p_minus": sqrt_p_minus,
+        "alpha_tol": alpha_tol, "u_tol": u_tol,
     })
 
     return parameters

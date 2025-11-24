@@ -37,7 +37,7 @@ def plot(output):
     fig, axes = plt.subplots(2, 3, figsize=(15, 9))
     plt.subplots_adjust(hspace=0.2, wspace=0.2)
     fig.suptitle(rf'$kv_{{th,e}}/\omega_{{pe}} = {k_norm:.2},'
-                 +rf'\nu = {nu}, u_e = {u_s[0]}, \alpha_e = {alpha_s[0]:.3},'
+                 +rf'\nu = {nu}, u_e init = {u_s[0,0]}, \alpha_e init = {alpha_s[0, 0]:.3},'
                  +rf'N_x = {Nx}, N_n = {Nn}, \delta n = {dn1}$', fontsize=14)
     
     # Energy plots
@@ -54,23 +54,23 @@ def plot(output):
     axes[1, 0].set(xlabel=r"Time ($\omega_{pe}^{-1}$)", ylabel="Relative Energy Error", yscale="log")#, ylim=[1e-5, None])
     
     # Plot electron density fluctuation vs t.
-    dnk1 = jnp.abs(output["dCk"][:, 0, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[0] * alpha_s[1] * alpha_s[2]
+    dnk1 = jnp.abs(output["dCk"][:, 0, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[:,0] * alpha_s[:,1] * alpha_s[:,2]
     axes[1, 1].plot(time, dnk1, label=r'$|\delta n^{S1}_{k}|$', linestyle='-', linewidth=2.0)
     axes[1, 1].set(title='Species 1 density fluctuation', ylabel=r'$log(|\delta n^{s1}_{k}|)$', xlabel=r'$t\omega_{pe}$', yscale="log")#, ylim=[1e-20, None])
     
     # Plot ion density fluctuation vs t.
-    dnk2 = jnp.abs(output["dCk"][:, Nn * Nm * Np, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[3] * alpha_s[4] * alpha_s[5]
-    axes[1, 2].plot(time, dnk2, label=r'$|\delta n^{s2}_{k}|$', linestyle='-', linewidth=2.0)
+    dnk2 = jnp.abs(output["dCk"][:, Nn * Nm * Np, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[:,3] * alpha_s[:,4] * alpha_s[:,5]
+    axes[1, 2].plot(time, dnk2, label='$|\delta n^{s2}_{k}|$', linestyle='-', linewidth=2.0)
     axes[1, 2].set(title='Species 2 density fluctuation', ylabel=r'$log(|\delta n^{s2}_{k}|)$', xlabel=r'$t\omega_{pe}$', yscale="log")#, ylim=[1e-20, None])
     
     # Electron Phase space plot
     i=0
-    vx = jnp.linspace(-4 * alpha_s[0], 4 * alpha_s[0], 201)
+    vx = jnp.linspace(-4 * jnp.max(alpha_s[:,3*i]), 4 * jnp.max(alpha_s[:,3*i]), 201)
     Vx, Vy, Vz = jnp.meshgrid(vx, jnp.array([0.]), jnp.array([0.]), indexing='xy')
     f1 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, 
-                                  (Vx - u_s[3*i]) / alpha_s[3*i], 
-                                  (Vy - u_s[3*i+1]) / alpha_s[3*i+1], 
-                                  (Vz - u_s[3*i+2]) / alpha_s[3*i+2])
+                                  (Vx[None] - u_s[:,3*i,None,None,None]) / alpha_s[:,3*i,None,None,None],
+                                  (Vy[None] - u_s[:,3*i+1,None,None,None]) / alpha_s[:,3*i+1,None,None,None],
+                                  (Vz[None] - u_s[:,3*i+2,None,None,None]) / alpha_s[:,3*i+2,None,None,None])
     electron_phase_plot = axes[0, 1].imshow(jnp.transpose(f1[0, 0, :, 0, 0, :, 0]), extent=(0, Lx, vx[0], vx[-1]),
                                             cmap='jet', origin='lower', interpolation='sinc')
     plt.colorbar(electron_phase_plot, ax=axes[0, 1], label="$f_1$")
@@ -82,12 +82,12 @@ def plot(output):
     
     # Ion Phase space plot
     i=1
-    vx = jnp.linspace(-4 * alpha_s[0], 4 * alpha_s[0], 201)
+    vx = jnp.linspace(-4 * jnp.max(alpha_s[:,3*i]), 4 * jnp.max(alpha_s[:,3*i]), 201)
     Vx, Vy, Vz = jnp.meshgrid(vx, jnp.array([0.]), jnp.array([0.]), indexing='xy')
     f2 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, 
-                                  (Vx - u_s[3*i]) / alpha_s[3*i], 
-                                  (Vy - u_s[3*i+1]) / alpha_s[3*i+1], 
-                                  (Vz - u_s[3*i+2]) / alpha_s[3*i+2])
+                                  (Vx[None] - u_s[:,3*i,None,None,None]) / alpha_s[:,3*i,None,None,None],
+                                  (Vy[None] - u_s[:,3*i+1,None,None,None]) / alpha_s[:,3*i+1,None,None,None],
+                                  (Vz[None] - u_s[:,3*i+2,None,None,None]) / alpha_s[:,3*i+2,None,None,None])
     ion_phase_plot = axes[0, 2].imshow(jnp.transpose(f2[0, 0, :, 0, 0, :, 0]), extent=(0, Lx, vx[0], vx[-1]),
                                             cmap='jet', origin='lower', interpolation='sinc')
     plt.colorbar(ion_phase_plot, ax=axes[0, 2], label="$f_2$")

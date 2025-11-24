@@ -29,13 +29,13 @@ def _infer_Ns(output: Mapping[str, Any]) -> int:
     -----
     SPECTRAX packs species velocity drifts as a flat array:
 
-        ``u_s = [u_x^0, u_y^0, u_z^0, u_x^1, u_y^1, u_z^1, ...]``
+        ``u_s[i] = [u_x^0, u_y^0, u_z^0, u_x^1, u_y^1, u_z^1, ...]`` at timestep i.
 
     so ``len(u_s) == 3 * Ns``.
     """
     u_s = output["u_s"]
     # `u_s.shape` is static information under JAX tracing.
-    n = int(u_s.shape[0])
+    n = int(u_s.shape[1])
     if (n % 3) != 0:
         raise ValueError(f"Cannot infer Ns from u_s of length {n}; expected multiple of 3.")
     return n // 3
@@ -77,8 +77,8 @@ def diagnostics(output: dict) -> None:
         Dictionary holding simulation results and parameters. This function
         expects at least the following keys:
 
-        - ``alpha_s``: array of shape ``(3*Ns,)`` (thermal scales per species)
-        - ``u_s``: array of shape ``(3*Ns,)`` (drift velocities per species)
+        - ``alpha_s``: array of shape ``(Nt, 3*Ns)`` (thermal scales per species)
+        - ``u_s``: array of shape ``(Nt, 3*Ns)`` (drift velocities per species)
         - ``Ck``: Hermite-Fourier coefficients of shape ``(Nt, Ns*Hs, Ny, Nx, Nz)``
         - ``Fk``: field Fourier coefficients of shape ``(Nt, 6, Ny, Nx, Nz)``
         - ``Omega_cs``: array of shape ``(Ns,)`` (cyclotron frequencies)
@@ -115,6 +115,7 @@ def diagnostics(output: dict) -> None:
     Omega_cs = jnp.asarray(output["Omega_cs"])
     Lx = output["Lx"]
 
+    Nt = Ck.shape[0]
     Ns = _infer_Ns(output)
 
     # Infer spatial grid sizes from shapes.
@@ -131,10 +132,10 @@ def diagnostics(output: dict) -> None:
     half_nz = Nz // 2
 
     # Basic sanity
-    if alpha_s.size != 3 * Ns:
-        raise ValueError(f"alpha_s has size {alpha_s.size}, expected 3*Ns={3*Ns}.")
-    if u_s.size != 3 * Ns:
-        raise ValueError(f"u_s has size {u_s.size}, expected 3*Ns={3*Ns}.")
+    if alpha_s.size != Nt * 3 * Ns:
+        raise ValueError(f"alpha_s has size {alpha_s.size}, expected Nt*3*Ns={Nt*3*Ns}.")
+    if u_s.size != Nt * 3 * Ns:
+        raise ValueError(f"u_s has size {u_s.size}, expected Nt*3*Ns={Nt*3*Ns}.")
 
     # Hermite layout sizes
     Htot = int(Ck.shape[1])
@@ -154,13 +155,13 @@ def diagnostics(output: dict) -> None:
     # - For Ns>2, use an effective value based on the x-thermal scales.
     if Ns == 2 and "mi_me" in output:
         mi_me = output["mi_me"]
-        lambda_D = jnp.sqrt(1.0 / (2.0 * (1.0 / alpha_s[0] ** 2 + 1.0 / (mi_me * alpha_s[3] ** 2))))
+        lambda_D = jnp.sqrt(1.0 / (2.0 * (1.0 / alpha_s[:,0] ** 2 + 1.0 / (mi_me * alpha_s[:,3] ** 2))))
     else:
-        alpha_x = alpha_s.reshape(Ns, 3)[:, 0]
+        alpha_x = alpha_s.reshape(Ns, 3)[:, :, 0]
         lambda_D = jnp.sqrt(1.0 / (2.0 * jnp.sum(1.0 / (alpha_x ** 2))))
 
-    # Original k_norm convention (species 0, x thermal).
-    k_norm = jnp.sqrt(2.0) * jnp.pi * alpha_s[0] / Lx
+    # Original k_norm convention (species 0, initial x thermal).
+    k_norm = jnp.sqrt(2.0) * jnp.pi * alpha_s[0,0] / Lx
 
     # Reshape Ck into species blocks along Hermite axis:
     # (Nt, Htot, Ny, Nx, Nz) -> (Nt, Ns, Hs, Ny, Nx, Nz)
@@ -198,20 +199,20 @@ def diagnostics(output: dict) -> None:
     C002 = _take_mode(2 * Nn * Nm)
 
     # Species parameters
-    alpha = alpha_s.reshape(Ns, 3)
-    u = u_s.reshape(Ns, 3)
+    alpha = alpha_s.reshape(Nt, Ns, 3)
+    u = u_s.reshape(Nt, Ns, 3)
     masses = _infer_masses(output, Ns)
 
-    a0, a1, a2 = alpha[:, 0], alpha[:, 1], alpha[:, 2]
-    u0, u1, u2 = u[:, 0], u[:, 1], u[:, 2]
+    a0, a1, a2 = alpha[:, :, 0], alpha[:, :, 1], alpha[:, :, 2]
+    u0, u1, u2 = u[:, :, 0], u[:, :, 1], u[:, :, 2]
 
-    pref = 0.5 * masses * a0 * a1 * a2  # (Ns,)
+    pref = 0.5 * masses * a0 * a1 * a2  # (Nt, Ns)
 
-    term0 = (0.5 * (a0**2 + a1**2 + a2**2) + (u0**2 + u1**2 + u2**2))  # (Ns,)
+    term0 = (0.5 * (a0**2 + a1**2 + a2**2) + (u0**2 + u1**2 + u2**2))  # (Nt, Ns)
     term1 = jnp.sqrt(2.0) * (a0 * u0 * C100 + a1 * u1 * C010 + a2 * u2 * C001)  # (Nt, Ns)
     term2 = (1.0 / jnp.sqrt(2.0)) * (a0**2 * C200 + a1**2 * C020 + a2**2 * C002)  # (Nt, Ns)
 
-    kinetic_energy_species = pref[None, :] * (term0[None, :] * C000 + term1 + term2)  # (Nt, Ns)
+    kinetic_energy_species = pref * (term0 * C000 + term1 + term2)  # (Nt, Ns)
     kinetic_energy = jnp.sum(kinetic_energy_species, axis=1)  # (Nt,)
     # Field energy
     EM_energy = 0.5 * jnp.sum(jnp.abs(Fk) ** 2, axis=(-4, -3, -2, -1)) * Omega_cs[0] ** 2  # (Nt,)
