@@ -41,7 +41,7 @@ def cross_product(k_vec, F_vec):
     return jnp.array([ky * Fz - kz * Fy, kz * Fx - kx * Fz, kx * Fy - ky * Fx])
 
 @partial(jit, static_argnames=['Nx', 'Ny', 'Nz', 'Nn', 'Nm', 'Np', 'Ns'])
-def ode_system(Nx, Ny, Nz, Nn, Nm, Np, Ns, t, Ck_Fk, args):
+def ode_system(Nx, Ny, Nz, Nn, Nm, Np, Ns, t, y, args):
     """
     Right-hand side for the coupled Vlasov-Maxwell system expressed in spectral form.
 
@@ -67,11 +67,11 @@ def ode_system(Nx, Ny, Nz, Nn, Nm, Np, Ns, t, Ck_Fk, args):
     jnp.ndarray
         Flattened derivative vector matching the shape of `Ck_Fk`.
     """
-
-    (qs, nu, D, Omega_cs, alpha_s, u_s,
+    Ck_Fk, alpha_s, u_s = y
+    (qs, nu, D, Omega_cs,
      Lx, Ly, Lz, kx_grid, ky_grid, kz_grid, k2_grid, nabla, col,
      sqrt_n_plus, sqrt_n_minus, sqrt_m_plus, sqrt_m_minus, sqrt_p_plus, sqrt_p_minus
-    ) = args[7:]
+    ) = args[7:-2]
 
     total_Ck_size = Nn * Nm * Np * Ns * Nx * Ny * Nz
     Ck = Ck_Fk[:total_Ck_size].reshape(Nn * Nm * Np * Ns, Ny, Nx, Nz)
@@ -94,11 +94,11 @@ def ode_system(Nx, Ny, Nz, Nn, Nm, Np, Ns, t, Ck_Fk, args):
     dEk_dt = 1j * cross_product(nabla, Fk[3:]) - current / Omega_cs[0]
 
     dFk_dt = jnp.concatenate([dEk_dt, dBk_dt], axis=0)
-    dy_dt  = jnp.concatenate([dCk_s_dt.reshape(-1), dFk_dt.reshape(-1)])
+    dy_dt  = (jnp.concatenate([dCk_s_dt.reshape(-1), dFk_dt.reshape(-1)]), jnp.zeros_like(alpha_s), jnp.zeros_like(u_s))
     return dy_dt
 
 @partial(jit, static_argnames=['Nx', 'Ny', 'Nz', 'Nn', 'Nm', 'Np', 'Ns', 'timesteps', 'solver'])
-def simulation(input_parameters={}, Nx=33, Ny=1, Nz=1, Nn=20, Nm=1, Np=1, Ns=2, timesteps=200, dt = 0.01, solver=Dopri5()):
+def simulation(input_parameters={}, Nx=33, Ny=1, Nz=1, Nn=20, Nm=1, Np=1, Ns=2, timesteps=200, dt = 0.01, solver=Dopri5(), alpha_tol = 0.1, u_tol = 0.1):
     """
     Run a spectral Vlasov-Maxwell simulation and return the solution together with
     the parameter dictionary used to produce it.
@@ -128,44 +128,45 @@ def simulation(input_parameters={}, Nx=33, Ny=1, Nz=1, Nn=20, Nm=1, Np=1, Ns=2, 
     """
     
     # **Initialize simulation parameters**
-    parameters = initialize_simulation_parameters(input_parameters, Nx, Ny, Nz, Nn, Nm, Np, Ns, timesteps, dt)
+    parameters = initialize_simulation_parameters(input_parameters, Nx, Ny, Nz, Nn, Nm, Np, Ns, timesteps, dt, alpha_tol, u_tol)
 
     # Combine initial conditions.
-    initial_conditions = jnp.concatenate([parameters["Ck_0"].flatten(), parameters["Fk_0"].flatten()])
+    initial_conditions = (jnp.concatenate([parameters["Ck_0"].flatten(), parameters["Fk_0"].flatten()]), parameters["alpha_s"], parameters["u_s"])
 
     # Define the time array for data output.
     time = jnp.linspace(0, parameters["t_max"], timesteps)
     
     # Arguments for the ODE system.
-    args = (Nx, Ny, Nz, Nn, Nm, Np, Ns, parameters["qs"], parameters["nu"], parameters["D"], parameters["Omega_cs"], parameters["alpha_s"],
-            parameters["u_s"], parameters["Lx"], parameters["Ly"], parameters["Lz"],
+    args = (Nx, Ny, Nz, Nn, Nm, Np, Ns, parameters["qs"], parameters["nu"], parameters["D"], parameters["Omega_cs"], parameters["Lx"], parameters["Ly"], parameters["Lz"],
             parameters["kx_grid"], parameters["ky_grid"], parameters["kz_grid"], parameters["k2_grid"], parameters["nabla"], parameters["collision_matrix"], 
             parameters["sqrt_n_plus"], parameters["sqrt_n_minus"],
             parameters["sqrt_m_plus"], parameters["sqrt_m_minus"],
-            parameters["sqrt_p_plus"], parameters["sqrt_p_minus"])
+            parameters["sqrt_p_plus"], parameters["sqrt_p_minus"],
+            parameters["alpha_tol"], parameters["u_tol"])
 
     # Solve the ODE system
     ode_system_partial = partial(ode_system, Nx, Ny, Nz, Nn, Nm, Np, Ns)
     sol = diffeqsolve(
         ODETerm(ode_system_partial), solver=solver,
-        stepsize_controller=PIDController(rtol=parameters["ode_tolerance"], atol=parameters["ode_tolerance"]),
-        # stepsize_controller=ConstantStepSize(),
+        # stepsize_controller=PIDController(rtol=parameters["ode_tolerance"], atol=parameters["ode_tolerance"]),
+        stepsize_controller=ConstantStepSize(),
         t0=0, t1=parameters["t_max"], dt0=dt,
         y0=initial_conditions, args=args, saveat=SaveAt(ts=time),
         max_steps=1000000, progress_meter=TqdmProgressMeter())
     
     ## Idea: take the eigenvalues of ODE_system to determine the stability of the system.
     
-    # Reshape the solution to extract Ck and Fk
-    Ck = sol.ys[:,:(-6 * Nx * Ny * Nz)].reshape(len(sol.ts), Ns * Nn * Nm * Np, Ny, Nx, Nz)
-    Fk = sol.ys[:,(-6 * Nx * Ny * Nz):].reshape(len(sol.ts), 6, Ny, Nx, Nz)
+    # Extract Ck, Fk, alpha, u
+    Ck_Fk, alpha_s, u_s = sol.ys
+    Ck = Ck_Fk[:,:(-6 * Nx * Ny * Nz)].reshape(len(sol.ts), Ns * Nn * Nm * Np, Ny, Nx, Nz)
+    Fk = Ck_Fk[:,(-6 * Nx * Ny * Nz):].reshape(len(sol.ts), 6, Ny, Nx, Nz)
     
     # Set n = 0, k = 0 mode to zero to get array with time evolution of perturbation.
     dCk = Ck.at[:, 0, 0, 1, 0].set(0)
     dCk = dCk.at[:, Nn * Nm * Np, 0, 1, 0].set(0)
     
     # Output results
-    temporary_output = {"Ck": Ck, "Fk": Fk, "time": time, "dCk": dCk}
+    temporary_output = {"Ck": Ck, "Fk": Fk, "alpha": alpha_s, "u": u_s, "time": time, "dCk": dCk}
     output = {**temporary_output, **parameters}
     diagnostics(output)
     return output

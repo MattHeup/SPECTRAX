@@ -34,7 +34,7 @@ def generate_Hermite_term_vmap(C, Herm_x, Herm_y, Herm_z, Nn, Nm, Np, xi_x, xi_y
         Hz = Herm_z[p]
         Herm = Hx * Hy * Hz * jnp.exp(-(xi_x**2 + xi_y**2 + xi_z**2))
         norm = jnp.sqrt(jnp.pi**3) * (2 ** ((n + m + p) / 2)) * jnp.sqrt(factorial(n) * factorial(m) * factorial(p))
-        return C_exp * Herm[None, None, None, None, :, :, :] / norm
+        return C_exp * Herm[:, None, None, None, :, :, :] / norm
 
     f_terms = vmap(compute_term, in_axes=(0, 0, 0, 0))(index, n, m, p)
     return jnp.sum(f_terms, axis=0)
