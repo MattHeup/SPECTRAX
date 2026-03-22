@@ -54,12 +54,12 @@ def plot(output):
     axes[1, 0].set(xlabel=r"Time ($\omega_{pe}^{-1}$)", ylabel="Relative Energy Error", yscale="log")#, ylim=[1e-5, None])
     
     # Plot electron density fluctuation vs t.
-    dnk1 = jnp.abs(output["dCk"][:, 0, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[0] * alpha_s[1] * alpha_s[2]
+    dnk1 = jnp.abs(output["dCk"][:, 0, ny, nx, nz].imag) * alpha_s[0] * alpha_s[1] * alpha_s[2]
     axes[1, 1].plot(time, dnk1, label=r'$|\delta n^{S1}_{k}|$', linestyle='-', linewidth=2.0)
     axes[1, 1].set(title='Species 1 density fluctuation', ylabel=r'$log(|\delta n^{s1}_{k}|)$', xlabel=r'$t\omega_{pe}$', yscale="log")#, ylim=[1e-20, None])
     
     # Plot ion density fluctuation vs t.
-    dnk2 = jnp.abs(output["dCk"][:, Nn * Nm * Np, int((Ny-1) / 2) + ny, int((Nx-1) / 2) + nx, int((Nz-1) / 2) + nz].imag) * alpha_s[3] * alpha_s[4] * alpha_s[5]
+    dnk2 = jnp.abs(output["dCk"][:, Nn * Nm * Np, ny, nx, nz].imag) * alpha_s[3] * alpha_s[4] * alpha_s[5]
     axes[1, 2].plot(time, dnk2, label=r'$|\delta n^{s2}_{k}|$', linestyle='-', linewidth=2.0)
     axes[1, 2].set(title='Species 2 density fluctuation', ylabel=r'$log(|\delta n^{s2}_{k}|)$', xlabel=r'$t\omega_{pe}$', yscale="log")#, ylim=[1e-20, None])
     

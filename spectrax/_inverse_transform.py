@@ -8,7 +8,7 @@ Hermite–Fourier coefficients. The implementation is written for JAX and uses
 import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
-from jax.numpy.fft import ifftn, ifftshift
+from jax.numpy.fft import irfftn
 from jax.scipy.special import factorial
 from orthax.hermite import hermval
 from jax import jit, vmap
@@ -114,7 +114,7 @@ def inverse_HF_transform(Ck, Nn, Nm, Np, xi_x, xi_y, xi_z):
     jnp.ndarray
         The reconstructed distribution function evaluated on ``(t, x, y, z, xi_x, xi_y, xi_z)``.
     """
-    C = ifftn(ifftshift(Ck, axes=(-3, -2, -1)), axes=(-3, -2, -1)).real
+    C = irfftn(Ck, axes=(-1, -3, -2))
 
     # Precompute Hermite functions up to desired order
     Herm_x = generate_Hermite_basis(Nn, xi_x)  # (Nn, Nvy, Nvx, Nvz)
