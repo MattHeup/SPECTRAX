@@ -22,7 +22,7 @@ def plot(output):
         and basic grid parameters.
     """
     time = output["time"]; k_norm = output["k_norm"]
-    u_s = output["u_s"]; alpha_s = output["alpha_s"]; nu = output["nu"]
+    u_s = output["u"]; alpha_s = output["alpha"]; nu = output["nu"]
     Lx = output["Lx"]; Ly = output["Ly"]; Lz = output["Lz"]
     Nx = output["Nx"]; Ny = output["Ny"]; Nz = output["Nz"]
     Nn = int(output["Nn"]); Nm = int(output["Nm"]); Np = int(output["Np"])
