@@ -105,13 +105,15 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
 
     from jax.scipy.special import logsumexp
 
-    def transformation_matrix(n, m, a, b, dim):
+    def transformation_matrix(n, m, species, dim):
+        a = (alpha_new[species * 3 + dim] / alpha_old[species * 3 + dim]).real
+        b = ((u_new[species * 3 + dim] - u_old[species * 3 + dim]) / alpha_old[species * 3 + dim]).real
+
         log_K = (m - n) / 2 * jnp.log(2) - ln_factorial(m) / 2 + ln_factorial(n) / 2
 
         all_sum_indices = jnp.arange(0, num_hermite[dim] + 1)
         mask = (all_sum_indices >= m) & (all_sum_indices <= n) & ((all_sum_indices - m) % 2 == 0)
 
-        # base1: -2b/a raised to integer power (n - idx)
         base1 = -2.0 * b / a
         exp1  = n - all_sum_indices
         log_abs_base1 = jnp.log(jnp.where(jnp.abs(base1) == 0, 1.0, jnp.abs(base1)))
@@ -120,8 +122,6 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
                       jnp.where(exp1 == 0, 0.0, -jnp.inf),
                       exp1 * log_abs_base1)
 
-        # base2: (1/a^2 - 1) raised to integer power (idx - m) / 2
-        # mask guarantees (idx - m) % 2 == 0, so exp2 is always an integer
         base2 = 1.0 / a ** 2 - 1.0
         exp2  = (all_sum_indices - m) / 2.0
         log_abs_base2 = jnp.log(jnp.where(jnp.abs(base2) == 0, 1.0, jnp.abs(base2)))
@@ -134,7 +134,6 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
                    - ln_factorial((all_sum_indices - m) / 2.0)
                    + term1 + term2)
 
-        # Pass signs as weights b and log-magnitudes as a — logsumexp handles the rest
         signs = jnp.where(mask, sign1 * sign2, 0.0)
         log_to_sum = jnp.where(mask, log_K - (m + 1) * jnp.log(a) + log_summand, -jnp.inf)
 
@@ -144,10 +143,8 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
         return lax.select(n >= m, result, 0.0)
 
     def transform_species(species, Ck_species):
-        a = (alpha_new[species * 3] / alpha_old[species * 3]).real
-        b = ((u_new[species * 3] - u_old[species * 3]) / alpha_old[species * 3]).real1
         Px = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
-                    in_axes=(0, None, None, None))(jnp.arange(Nn), jnp.arange(Nn), a, b, 0)
+                    in_axes=(0, None, None, None))(jnp.arange(Nn), jnp.arange(Nn), species, 0)
 
         Py = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
                     in_axes=(0, None, None, None))(jnp.arange(Nm), jnp.arange(Nm), species, 1)
