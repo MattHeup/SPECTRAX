@@ -175,8 +175,8 @@ if __name__ == "__main__":
     
     N_test_list = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150] 
     TRUTH_N = 200
-    NUM_TRIALS = 3
-    TIMEOUT_SECONDS = 60
+    NUM_TRIALS = 15
+    TIMEOUT_SECONDS = 45 * NUM_TRIALS
     
     res = run_two_stream_benchmark(N_test_list, TRUTH_N, NUM_TRIALS, TIMEOUT_SECONDS)
 
@@ -198,11 +198,11 @@ if __name__ == "__main__":
     
     ax0 = axes[0]
     if res["static"]["N"]:
-        ax0.loglog(res["static"]["time"], res["static"]["error_EM"], marker='o', linestyle='-', label='Static', color='tab:blue')
+        ax0.semilogy(res["static"]["time"], res["static"]["error_EM"], marker='o', linestyle='-', label='Static', color='tab:blue')
         for i, N in enumerate(res["static"]["N"]):
             ax0.annotate(f"N={N}", (res["static"]["time"][i], res["static"]["error_EM"][i]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color='tab:blue')
     if res["adaptive"]["N"]:
-        ax0.loglog(res["adaptive"]["time"], res["adaptive"]["error_EM"], marker='s', linestyle='--', label='Adaptive', color='tab:orange')
+        ax0.semilogy(res["adaptive"]["time"], res["adaptive"]["error_EM"], marker='s', linestyle='--', label='Adaptive', color='tab:orange')
         for i, N in enumerate(res["adaptive"]["N"]):
             ax0.annotate(f"N={N}", (res["adaptive"]["time"][i], res["adaptive"]["error_EM"][i]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color='tab:orange')
     ax0.set_title("EM Energy Error", fontweight='bold')
@@ -213,11 +213,11 @@ if __name__ == "__main__":
 
     ax1 = axes[1]
     if res["static"]["N"]:
-        ax1.loglog(res["static"]["time"], res["static"]["error_f1"], marker='o', linestyle='-', label='Static', color='tab:blue')
+        ax1.semilogy(res["static"]["time"], res["static"]["error_f1"], marker='o', linestyle='-', label='Static', color='tab:blue')
         for i, N in enumerate(res["static"]["N"]):
             ax1.annotate(f"N={N}", (res["static"]["time"][i], res["static"]["error_f1"][i]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color='tab:blue')
     if res["adaptive"]["N"]:
-        ax1.loglog(res["adaptive"]["time"], res["adaptive"]["error_f1"], marker='s', linestyle='--', label='Adaptive', color='tab:orange')
+        ax1.semilogy(res["adaptive"]["time"], res["adaptive"]["error_f1"], marker='s', linestyle='--', label='Adaptive', color='tab:orange')
         for i, N in enumerate(res["adaptive"]["N"]):
             ax1.annotate(f"N={N}", (res["adaptive"]["time"][i], res["adaptive"]["error_f1"][i]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color='tab:orange')
     ax1.set_title("Distribution Function $f_e(x,v)$ Error (Final Timestep)", fontweight='bold')
@@ -229,13 +229,13 @@ if __name__ == "__main__":
     if speedups:
         ax2.plot(speedup_N, speedups, marker='D', linestyle='-', color='tab:red', linewidth=2)
         ax2.axhline(1.0, color='black', linestyle='--', linewidth=1.5, alpha=0.7)
-        ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) > 1.0), interpolate=True, color='tab:green', alpha=0.2, label='Adaptive is Faster')
-        ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) <= 1.0), interpolate=True, color='tab:red', alpha=0.2, label='Static is Faster')
+        # ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) > 1.0), interpolate=True, color='tab:green', alpha=0.2, label='Adaptive is Faster')
+        # ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) <= 1.0), interpolate=True, color='tab:red', alpha=0.2, label='Static is Faster')
     ax2.set_title("Execution Time Ratio (Static / Adaptive)", fontweight='bold')
-    ax2.set_xlabel("Number of Hermite Modes (N)")
-    ax2.set_ylabel("Speedup Factor")
+    ax2.set_xlabel("Number of Hermite Modes")
+    ax2.set_ylabel("Ratio")
     ax2.grid(True, alpha=0.5)
-    ax2.legend()
+    # ax2.legend()
 
     plt.suptitle("1D Two-Stream Instability Benchmark: Self-Convergence", fontsize=16, fontweight='bold', y=1.05)
     plt.tight_layout()
