@@ -103,47 +103,65 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
     def ln_factorial(n):
         return gammaln(n + 1)
 
-    def transformation_matrix(n, m, species, dim):
-        a = alpha_new[species * 3 + dim] / alpha_old[species * 3 + dim]
-        b = (u_new[species * 3 + dim] - u_old[species * 3 + dim]) / alpha_old[species * 3 + dim]
-        
+    from jax.scipy.special import logsumexp
+
+    def transformation_matrix(n, m, a, b, dim):
         log_K = (m - n) / 2 * jnp.log(2) - ln_factorial(m) / 2 + ln_factorial(n) / 2
-        
+
         all_sum_indices = jnp.arange(0, num_hermite[dim] + 1)
         mask = (all_sum_indices >= m) & (all_sum_indices <= n) & ((all_sum_indices - m) % 2 == 0)
 
-        base1 = jnp.complex128(-2.0 * b / a)
-        exp1 = n - all_sum_indices
-        log_base1 = jnp.log(jnp.where(base1 == 0, 1.0, base1))
-        term1 = jnp.where(base1 == 0, jnp.where(exp1 == 0, 0.0, -jnp.inf), exp1 * log_base1)
+        # base1: -2b/a raised to integer power (n - idx)
+        base1 = -2.0 * b / a
+        exp1  = n - all_sum_indices
+        log_abs_base1 = jnp.log(jnp.where(jnp.abs(base1) == 0, 1.0, jnp.abs(base1)))
+        sign1 = jnp.where(base1 < 0, (-1.0) ** exp1, 1.0)
+        term1 = jnp.where(jnp.abs(base1) == 0,
+                      jnp.where(exp1 == 0, 0.0, -jnp.inf),
+                      exp1 * log_abs_base1)
 
-        base2 = jnp.complex128(1.0 / a ** 2 - 1.0)
-        exp2 = (all_sum_indices - m) / 2.0
-        log_base2 = jnp.log(jnp.where(base2 == 0, 1.0, base2))
-        term2 = jnp.where(base2 == 0, jnp.where(exp2 == 0, 0.0, -jnp.inf), exp2 * log_base2)
+        # base2: (1/a^2 - 1) raised to integer power (idx - m) / 2
+        # mask guarantees (idx - m) % 2 == 0, so exp2 is always an integer
+        base2 = 1.0 / a ** 2 - 1.0
+        exp2  = (all_sum_indices - m) / 2.0
+        log_abs_base2 = jnp.log(jnp.where(jnp.abs(base2) == 0, 1.0, jnp.abs(base2)))
+        sign2 = jnp.where(base2 < 0, (-1.0) ** exp2, 1.0)
+        term2 = jnp.where(jnp.abs(base2) == 0,
+                      jnp.where(exp2 == 0, 0.0, -jnp.inf),
+                      exp2 * log_abs_base2)
 
-        log_summand = -ln_factorial(n - all_sum_indices) - ln_factorial((all_sum_indices - m) / 2.0) + term1 + term2
-        log_summand_masked = jnp.where(mask, log_summand, -jnp.inf)
-        
-        to_sum = log_K - (m + 1) * jnp.log(a) + log_summand_masked
-        log_sum = logsumexp(to_sum)
+        log_summand = (-ln_factorial(n - all_sum_indices)
+                   - ln_factorial((all_sum_indices - m) / 2.0)
+                   + term1 + term2)
 
-        return lax.select(n >= m, jnp.exp(log_sum), jnp.complex128(0))
+        # Pass signs as weights b and log-magnitudes as a — logsumexp handles the rest
+        signs = jnp.where(mask, sign1 * sign2, 0.0)
+        log_to_sum = jnp.where(mask, log_K - (m + 1) * jnp.log(a) + log_summand, -jnp.inf)
 
-    def transform_species(species, Ck_arr):
-        Ck_species = Ck_arr[species]
+        log_abs_result, result_sign = logsumexp(log_to_sum, b=signs, return_sign=True)
+        result = result_sign * jnp.exp(log_abs_result)
 
+        return lax.select(n >= m, result, 0.0)
+
+    def transform_species(species, Ck_species):
+        a = (alpha_new[species * 3] / alpha_old[species * 3]).real
+        b = ((u_new[species * 3] - u_old[species * 3]) / alpha_old[species * 3]).real1
         Px = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
-                    in_axes=(0, None, None, None))(jnp.arange(Nn), jnp.arange(Nn), species, 0)
+                    in_axes=(0, None, None, None))(jnp.arange(Nn), jnp.arange(Nn), a, b, 0)
 
         Py = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
                     in_axes=(0, None, None, None))(jnp.arange(Nm), jnp.arange(Nm), species, 1)
 
         Pz = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
                     in_axes=(0, None, None, None))(jnp.arange(Np), jnp.arange(Np), species, 2)
+        # Explicit matmul is identical for now, may be faster with lineax upper-triangular designation?
+        # T = (Ck_species.transpose(0, 1, 3, 4, 5, 2) @ Px.T)   # (r,q,y,x,z,i)
+        # T = T.transpose(0, 1, 5, 2, 3, 4)                     # (r,q,i,y,x,z)
+        # T = (T.transpose(0, 2, 3, 4, 5, 1) @ Py.T)            # (r,i,y,x,z,j)
+        # T = T.transpose(0, 5, 1, 2, 3, 4)                     # (r,j,i,y,x,z)
+        # T = (T.transpose(1, 2, 3, 4, 5, 0) @ Pz.T)            # (j,i,y,x,z,k)
+        # return T.transpose(5, 0, 1, 2, 3, 4)            # (k,j,i,y,x,z)
+        return jnp.einsum('ip,jq,kr,rqpyxz->kjiyxz', Px, Py, Pz, Ck_species)
 
-        Ck_species = jnp.einsum('ip,jq,kr,rqpyxz->kjiyxz', Px, Py, Pz, Ck_species)
-        return Ck_arr.at[species].set(Ck_species)
-
-    Ck_new = lax.fori_loop(0, Ns, transform_species, Ck)
+    Ck_new = jax.vmap(transform_species)(jnp.arange(Ns), Ck)
     return Ck_new, alpha_new, u_new
