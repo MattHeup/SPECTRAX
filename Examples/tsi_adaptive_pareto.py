@@ -228,7 +228,7 @@ if __name__ == "__main__":
     # plt.suptitle("1D Two-Stream Instability Benchmark: Self-Convergence", fontsize=16, fontweight='bold', y=1.05)
     plt.tight_layout()
     
-    out_file = "tsi_pareto.png"
+    out_file = r"Examples\tsi_adaptive_pareto.png"
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
     print(f"\nBenchmarking complete! Plot saved to {out_file}")
     plt.show()
