@@ -173,7 +173,7 @@ def run_two_stream_benchmark(N_list, truth_N, num_trials=3, timeout=300):
 if __name__ == "__main__":
     mp.freeze_support()
     
-    N_test_list = [10, 20, 30, 40, 50, 60, 80, 100, 120, 150] 
+    N_test_list = [10, 20, 30, 40, 50, 60, 80, 100, 120] 
     TRUTH_N = 200
     NUM_TRIALS = 15
     TIMEOUT_SECONDS = 45 * NUM_TRIALS
@@ -194,7 +194,7 @@ if __name__ == "__main__":
             speedups.append(time_static / time_adaptive)
             speedup_N.append(n)
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig, axes = plt.subplots(3, 1, figsize=(6, 18))
     
     ax0 = axes[0]
     if res["static"]["N"]:
@@ -237,7 +237,7 @@ if __name__ == "__main__":
     ax2.grid(True, alpha=0.5)
     # ax2.legend()
 
-    plt.suptitle("1D Two-Stream Instability Benchmark: Self-Convergence", fontsize=16, fontweight='bold', y=1.05)
+    # plt.suptitle("1D Two-Stream Instability Benchmark: Self-Convergence", fontsize=16, fontweight='bold', y=1.05)
     plt.tight_layout()
     
     out_file = "tsi_comparison.png"
