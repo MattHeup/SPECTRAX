@@ -176,7 +176,7 @@ if __name__ == "__main__":
     N_test_list = [10, 20, 30, 40, 50, 60, 80, 100, 120] 
     TRUTH_N = 200
     NUM_TRIALS = 15
-    TIMEOUT_SECONDS = 45 * NUM_TRIALS
+    TIMEOUT_SECONDS = 20 * NUM_TRIALS
     
     res = run_two_stream_benchmark(N_test_list, TRUTH_N, NUM_TRIALS, TIMEOUT_SECONDS)
 
@@ -194,7 +194,7 @@ if __name__ == "__main__":
             speedups.append(time_static / time_adaptive)
             speedup_N.append(n)
 
-    fig, axes = plt.subplots(3, 1, figsize=(6, 18))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     
     ax0 = axes[0]
     if res["static"]["N"]:
@@ -225,22 +225,10 @@ if __name__ == "__main__":
     ax1.grid(True, which="both", ls="--", alpha=0.5)
     ax1.legend()
 
-    ax2 = axes[2]
-    if speedups:
-        ax2.plot(speedup_N, speedups, marker='D', linestyle='-', color='tab:red', linewidth=2)
-        ax2.axhline(1.0, color='black', linestyle='--', linewidth=1.5, alpha=0.7)
-        # ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) > 1.0), interpolate=True, color='tab:green', alpha=0.2, label='Adaptive is Faster')
-        # ax2.fill_between(speedup_N, 1.0, speedups, where=(np.array(speedups) <= 1.0), interpolate=True, color='tab:red', alpha=0.2, label='Static is Faster')
-    ax2.set_title("Execution Time Ratio (Static / Adaptive)", fontweight='bold')
-    ax2.set_xlabel("Number of Hermite Modes")
-    ax2.set_ylabel("Ratio")
-    ax2.grid(True, alpha=0.5)
-    # ax2.legend()
-
     # plt.suptitle("1D Two-Stream Instability Benchmark: Self-Convergence", fontsize=16, fontweight='bold', y=1.05)
     plt.tight_layout()
     
-    out_file = "tsi_comparison.png"
+    out_file = r"Examples\tsi_adaptive_pareto.png"
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
     print(f"\nBenchmarking complete! Plot saved to {out_file}")
     plt.show()

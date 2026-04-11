@@ -178,7 +178,7 @@ if __name__ == "__main__":
     # Display and Save
     # plt.suptitle(f"1D Two-Stream Instability Dynamics", fontsize=18, fontweight='bold', y=0.98)
     plt.tight_layout()
-    out_file = "tsi_adaptive_comparison.png"
+    out_file = r"Examples\tsi_adaptive_comparison.png"
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
     print(f"Plot saved to {out_file}")
     plt.show()
