@@ -151,7 +151,7 @@ def change_hermite_basis(Ck, Nn, Nm, Np, Ns, Nx, Ny, Nz, alpha_old, u_old, alpha
 
         Pz = jax.vmap(jax.vmap(transformation_matrix, in_axes=(None, 0, None, None)),
                     in_axes=(0, None, None, None))(jnp.arange(Np), jnp.arange(Np), species, 2)
-        # Explicit matmul is identical for now, may be faster with lineax upper-triangular designation?
+        # Explicit matmul is identical for now, may be faster with lineax lower-triangular designation?
         # T = (Ck_species.transpose(0, 1, 3, 4, 5, 2) @ Px.T)   # (r,q,y,x,z,i)
         # T = T.transpose(0, 1, 5, 2, 3, 4)                     # (r,q,i,y,x,z)
         # T = (T.transpose(0, 2, 3, 4, 5, 1) @ Py.T)            # (r,i,y,x,z,j)
