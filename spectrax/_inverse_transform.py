@@ -94,8 +94,8 @@ def generate_Hermite_term(C, Herm_x, Herm_y, Herm_z, Nn, Nm, Np, xi_x, xi_y, xi_
     # -> f:    (Nt, Ny, Nx, Nz, Nvy, Nvx, Nvz)
     return jnp.tensordot(C, basis, axes=([1], [0])) * gauss[None, None, None, None, :, :, :]
 
-@partial(jit, static_argnames=['Nn', 'Nm', 'Np'])
-def inverse_HF_transform(Ck, Nn, Nm, Np, xi_x, xi_y, xi_z):
+@partial(jit, static_argnames=['Nn', 'Nm', 'Np', 'Nx', 'Ny', 'Nz'])
+def inverse_HF_transform(Ck, Nn, Nm, Np, Nx, Ny, Nz, xi_x, xi_y, xi_z):
     """Reconstruct ``f(x, v)`` from Hermite–Fourier coefficients.
 
     Parameters
@@ -105,6 +105,8 @@ def inverse_HF_transform(Ck, Nn, Nm, Np, xi_x, xi_y, xi_z):
         The inverse FFT is applied along the last three axes.
     Nn, Nm, Np : int
         Number of Hermite modes retained along each velocity-space axis.
+    Nx, Ny, Nz : int
+        Number of Fourier modes retained along each configuration-space axis.
     xi_x, xi_y, xi_z : jnp.ndarray
         Normalized velocity-space coordinates (typically ``(v - u)/alpha``) used
         to evaluate Hermite polynomials and the Gaussian weight.
@@ -114,7 +116,7 @@ def inverse_HF_transform(Ck, Nn, Nm, Np, xi_x, xi_y, xi_z):
     jnp.ndarray
         The reconstructed distribution function evaluated on ``(t, x, y, z, xi_x, xi_y, xi_z)``.
     """
-    C = irfftn(Ck, axes=(-1, -3, -2))
+    C = irfftn(Ck, s=(Nz, Ny, Nx), axes=(-1, -3, -2))
 
     # Precompute Hermite functions up to desired order
     Herm_x = generate_Hermite_basis(Nn, xi_x)  # (Nn, Nvy, Nvx, Nvz)

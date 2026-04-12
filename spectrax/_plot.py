@@ -67,7 +67,7 @@ def plot(output):
     i=0
     vx = jnp.linspace(-4 * alpha_s[0], 4 * alpha_s[0], 201)
     Vx, Vy, Vz = jnp.meshgrid(vx, jnp.array([0.]), jnp.array([0.]), indexing='xy')
-    f1 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, 
+    f1 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, int(Nx), int(Ny), int(Nz),
                                   (Vx - u_s[3*i]) / alpha_s[3*i], 
                                   (Vy - u_s[3*i+1]) / alpha_s[3*i+1], 
                                   (Vz - u_s[3*i+2]) / alpha_s[3*i+2])
@@ -84,7 +84,7 @@ def plot(output):
     i=1
     vx = jnp.linspace(-4 * alpha_s[0], 4 * alpha_s[0], 201)
     Vx, Vy, Vz = jnp.meshgrid(vx, jnp.array([0.]), jnp.array([0.]), indexing='xy')
-    f2 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, 
+    f2 = inverse_HF_transform(Ck[:, (i*Nn*Nm*Np):(i+1)*Nn*Nm*Np, ...], Nn, Nm, Np, int(Nx), int(Ny), int(Nz),
                                   (Vx - u_s[3*i]) / alpha_s[3*i], 
                                   (Vy - u_s[3*i+1]) / alpha_s[3*i+1], 
                                   (Vz - u_s[3*i+2]) / alpha_s[3*i+2])
