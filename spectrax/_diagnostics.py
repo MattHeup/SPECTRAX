@@ -117,6 +117,7 @@ def diagnostics(output: dict) -> None:
 
     Ns = _infer_Ns(output)
 
+    Nx = output["Nx"] # TODO why not just take all of these? And replace Nx_kept with Nx//2+1 where it's used
     # Infer spatial grid sizes from shapes.
     Ny = int(Fk.shape[-3])
     Nx_kept = int(Fk.shape[-2])
@@ -208,11 +209,7 @@ def diagnostics(output: dict) -> None:
     # Field energy
     rfft_weights = jnp.full(Nx_kept, 2.0)
     rfft_weights = rfft_weights.at[0].set(1.0)
-    """
-    TODO only applicable if Nx is even, but we don't have Nx in diagnostics right now
-    if Nx % 2 == 0:
-        rfft_weights = rfft_weights.at[-1].set(1.0)
-    """
+    rfft_weights = rfft_weights.at[-1].set(1.0)
     weight_grid = rfft_weights.reshape(1, 1, -1, 1)
     EM_energy = 0.5 * jnp.sum((jnp.abs(Fk) ** 2) * weight_grid, axis=(-4, -3, -2, -1)) * Omega_cs[0] ** 2
 
