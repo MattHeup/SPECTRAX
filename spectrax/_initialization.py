@@ -113,7 +113,7 @@ def initialize_simulation_parameters(user_parameters={}, Nx=33, Ny=1, Nz=1, Nn=5
     ky_simulation = jnp.fft.fftfreq(Ny) * Ny * 2 * jnp.pi
     kz_simulation = jnp.fft.fftfreq(Nz) * Nz * 2 * jnp.pi
 
-    kx_grid, ky_grid, kz_grid = jnp.meshgrid(kx_simulation, ky_simulation, kz_simulation, indexing='xy')
+    ky_grid, kx_grid, kz_grid = jnp.meshgrid(ky_simulation, kx_simulation, kz_simulation, indexing='ij')
     k2_grid = kx_grid**2 + ky_grid**2 + kz_grid**2
     nabla = jnp.array([kx_grid / Lx, ky_grid / Ly, kz_grid / Lz])
 

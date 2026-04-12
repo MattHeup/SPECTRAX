@@ -1,3 +1,1 @@
-- Try reordering spatial axes to make x last
-- Get all examples working
 - Pass Nx, Ny, Nz into diagnostics so we can handle even values, also possibly to inverse_transform
