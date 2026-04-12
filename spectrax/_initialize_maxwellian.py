@@ -39,9 +39,9 @@ def compute_C_nmp(Us_grid, alpha_s, u_s, Nn, Nm, Np, Ns):
         corresponding to the Maxwellian evaluated on the supplied grid.
     """
     
-    U_x = Us_grid[:, 0, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx//2+1, Nz)
-    U_y = Us_grid[:, 1, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx//2+1, Nz)
-    U_z = Us_grid[:, 2, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx//2+1, Nz)
+    U_x = Us_grid[:, 0, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx, Nz)
+    U_y = Us_grid[:, 1, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx, Nz)
+    U_z = Us_grid[:, 2, None, None, None, :, :, :] # shape (Ns, 1, 1, 1, Ny, Nx, Nz)
 
     alpha = jnp.array(alpha_s).reshape(Ns, 3)
     alpha_x = alpha[:, 0, None, None, None, None, None, None] # shape (Ns, 1, 1, 1, 1, 1, 1)
