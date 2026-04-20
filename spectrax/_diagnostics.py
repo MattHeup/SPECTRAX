@@ -117,7 +117,6 @@ def diagnostics(output: dict) -> None:
 
     Ns = _infer_Ns(output)
 
-    Nx = output["Nx"] # TODO why not just take all of these? And replace Nx_kept with Nx//2+1 where it's used
     # Infer spatial grid sizes from shapes.
     Ny = int(Fk.shape[-3])
     Nx_kept = int(Fk.shape[-2])
